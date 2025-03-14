@@ -1,0 +1,100 @@
+edition: 3.0.0
+name: hello-world-app
+access: "{{ access }}"
+
+vars: 
+  region: "{{ region }}"
+  name: "{{ projectname }}"
+
+resources:
+  rag_app:
+    component: fc3
+    actions:
+      complete-deploy: 
+        - run: sleep 5s
+          path: ./
+    props:
+      region: ${vars.region}
+      functionName: ${vars.name}-app
+      description: "cap rag with deeepseekr1" 
+      runtime: custom.debian11
+      instanceConcurrency: 200
+      timeout: 3600
+      cpu: 2
+      memorySize: 2048
+      diskSize: 10240
+      code: ./code
+      vpcConfig: auto
+      nasConfig: auto
+      logConfig: auto
+      customRuntimeConfig:
+        port: 80
+        command:
+          - uvicorn
+          - main:app
+        args:  
+          - --host 
+          - 0.0.0.0 
+          - --port 
+          - "80"
+      layers:
+        - acs:fc:${vars.region}:1348378242694825:layers/localRAGLayer/versions/2
+      environmentVariables:
+        PATH: /var/fc/lang/python3.12/bin:/opt/python/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+        PYTHONPATH: /opt/python
+        DASHSCOPE_API_KEY: "{{ DASHSCOPE_API_KEY }}"
+        OLLAMA_LLM_ENDPOINT: ${resources.DeepSeek-R1-Distill.output.urlIntranet}
+        WORK_DIR: /mnt/${this.props.functionName}
+
+      concurrencyConfig:
+        reservedConcurrency: 1
+      
+      provisionConfig:
+        defaultTarget: 1
+        alwaysAllocateCPU: true
+
+      customDomain:
+        protocol: "HTTP"
+        route:
+          path: "/*"
+          qualifier: "LATEST"
+        domainName: auto
+
+  DeepSeek-R1-Distill:
+    component: model
+    props:
+      region: ${vars.region}
+      role: "acs:ram::${config(\"AccountID\")}:role/aliyundevsdefaultrole"
+      name: '${vars.name}-llm'
+      description: CAP 托管的 DeepSeek-R1 模型服务
+      modelConfig:
+        framework: ollama
+        sourceType: oss
+        srcOssRegion: ${vars.region}
+        srcOssBucket: 'dipper-cache-${vars.region}'
+        srcOssPath: cap-session/DeepSeek-R1-Distill-Qwen-7B-GGUF-lmstudio
+        fmkOllamaConfig:
+          modelName: cap-deepseek-r1
+          singleModelFile: DeepSeek-R1-Distill-Qwen-7B-Q4_K_M.gguf
+          modelfileParams: '{"num_ctx": 131072,"stop":["<｜begin▁of▁sentence｜>","<｜end▁of▁sentence｜>","<｜User｜>","<｜Assistant｜>"]}'
+          modelfileTemplate: 'e3stIGlmIC5TeXN0ZW0gfX17eyAuU3lzdGVtIH19e3sgZW5kIH19Cnt7LSByYW5nZSAkaSwgJF8gOj0gLk1lc3NhZ2VzIH19Cnt7LSAkbGFzdCA6PSBlcSAobGVuIChzbGljZSAkLk1lc3NhZ2VzICRpKSkgMX19Cnt7LSBpZiBlcSAuUm9sZSAidXNlciIgfX08772cVXNlcu+9nD57eyAuQ29udGVudCB9fQp7ey0gZWxzZSBpZiBlcSAuUm9sZSAiYXNzaXN0YW50IiB9fTzvvZxBc3Npc3RhbnTvvZw+e3sgLkNvbnRlbnQgfX17ey0gaWYgbm90ICRsYXN0IH19PO+9nGVuZOKWgW9m4paBc2VudGVuY2XvvZw+e3stIGVuZCB9fQp7ey0gZW5kIH19Cnt7LSBpZiBhbmQgJGxhc3QgKG5lIC5Sb2xlICJhc3Npc3RhbnQiKSB9fTzvvZxBc3Npc3RhbnTvvZw+e3stIGVuZCB9fQp7ey0gZW5kIH19'
+      cpu: 8
+      memorySize: 65536
+      diskSize: 10240
+      gpuConfig:
+        gpuMemorySize: 49152
+        gpuType: fc.gpu.ada.1
+      vpcConfig: auto
+      nasConfig: auto
+      logConfig: auto
+      timeout: 6000
+      provisionConfig:
+        target: 1
+        alwaysAllocateGPU: true
+      instanceConcurrency: 2
+      concurrencyConfig:
+        reservedConcurrency: 2
+      annotations:
+        modleID: "cap-deepseek-r1"
+        instanceType: "Ada 系列"
+
