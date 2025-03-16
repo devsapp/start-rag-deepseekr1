@@ -1,0 +1,8 @@
+services:  
+  rag_app:
+    DASHSCOPE_API_KEY:
+      title: DASHSCOPE API_KEY
+      sensitive: true
+      type: string
+      default: ''
+      description: 使用百炼提供的embedding模型API, 可以通过 https://bailian.console.aliyun.com/?apiKey=1#/api-key-center 获取
